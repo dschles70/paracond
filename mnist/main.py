@@ -1,0 +1,160 @@
+import os
+import argparse
+import time
+import torch
+import torchvision.utils as vutils
+
+from helpers import ensure_dir, vlen, load_model, save_model
+
+from c_model import CModel
+from z_model import ZModel
+from x_model import XModel
+from target import Target
+from inconsistency import inconsistency
+from inference import inference
+
+if __name__ == '__main__':
+    print(os.uname(), flush=True)
+    time0 = time.time()
+
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--call_prefix', required=True, help='Call prefix.')
+    parser.add_argument('--load_prefix', default='', help='Load prefix.')
+    parser.add_argument('--stepsize', type=float, required=True, help='')
+    parser.add_argument('--nz', type=int, required=True, help='')
+    parser.add_argument('--bs_a', type=int, default=1024, help='Batch size')
+    parser.add_argument('--bs_n', type=int, default=256, help='Batch size')
+    parser.add_argument('--niterations', type=int, default=-1, help='')
+
+    args = parser.parse_args()
+
+    ensure_dir('./logs')
+    ensure_dir('./models')
+    ensure_dir('./images')
+
+    # printout
+    logname = './logs/log-' + args.call_prefix + '.txt'
+    print('# Starting at ' + time.strftime('%c'), file=open(logname, 'w'), flush=True)
+
+    device = torch.cuda.current_device()
+    torch.autograd.set_detect_anomaly(True)
+
+    # numbers of hidden variables
+    nz = args.nz
+    nc = 10
+
+    c_model = CModel(nc, nz, args.stepsize).to(device)
+    z_model = ZModel(nc, nz, args.stepsize).to(device)
+    x_model = XModel(nc, nz, args.stepsize).to(device)
+
+    if args.load_prefix != '':
+        strict_c = True
+        strict_z = True
+        strict_x = True
+        load_optimizer = False
+
+        loadprot = load_model(c_model, './models/c_' + args.load_prefix + '.pt', strict=strict_c, load_optimizer=load_optimizer)
+        print('c: ', loadprot, flush=True)
+        loadprot = load_model(z_model, './models/z_' + args.load_prefix + '.pt', strict=strict_z, load_optimizer=load_optimizer)
+        print('z: ', loadprot, flush=True)
+        loadprot = load_model(x_model, './models/x_' + args.load_prefix + '.pt', strict=strict_x, load_optimizer=load_optimizer)
+        print('x: ', loadprot, flush=True)
+
+        print('# Models loaded', file=open(logname, 'a'), flush=True)
+
+    target = Target(c_model, z_model, x_model, args.bs_a, args.bs_n, device)
+
+    log_period = 100
+    save_period = 1000
+    count = 0
+
+    print('# Models prepared, go ...', file=open(logname, 'a'), flush=True)
+
+    loss_c = 2.3 * torch.ones([], device=device)
+    loss_z = 0.69 * torch.ones([], device=device)
+    loss_x = 0.69 * torch.ones([], device=device)
+    inc = torch.zeros([], device=device)
+    acc_train = 0.1 * torch.ones([], device=device)
+    acc_val = 0.1 * torch.ones([], device=device)
+
+    while True:
+        # accumulation speed
+        afactor = (1/(count + 1)) if count < 1000 else 0.001
+        afactor1 = 1 - afactor
+
+        c, z, x, l = target.get_batch()
+        loss_c = loss_c*afactor1 + c_model.optimize(c, z, x, l)*afactor
+        loss_z = loss_z*afactor1 + z_model.optimize(c, z, x, l)*afactor
+        loss_x = loss_x*afactor1 + x_model.optimize(c, z, x, l)*afactor
+
+        # once awhile print out
+        if count % log_period == 0:
+
+            count1 = count // log_period
+            afactor = (1/(count1 + 1)) if count1 < 100 else 0.01
+            afactor1 = 1 - afactor
+
+            strtoprint = 'time: ' + str(time.time()-time0) + ' count: ' + str(count)
+
+            strtoprint += ' clen: ' + str(vlen(c_model).cpu().numpy())
+            strtoprint += ' closs: ' + str(loss_c.cpu().numpy())
+
+            ci, xi = target.mnist.get_train(device)
+            dec = inference(xi, c_model, z_model)
+            ci = torch.argmax(ci, dim=1)
+            dec = torch.argmax(dec, dim=1)
+            acc = (ci == dec).float().mean()
+            acc_train = acc_train * afactor1 + acc * afactor
+
+            ci, xi = target.mnist.get_val(device)
+            dec = inference(xi, c_model, z_model)
+            ci = torch.argmax(ci, dim=1)
+            dec = torch.argmax(dec, dim=1)
+            acc = (ci == dec).float().mean()
+            acc_val = acc_val * afactor1 + acc * afactor
+
+            strtoprint += ' cacctrain: ' + str(acc_train.cpu().numpy())
+            strtoprint += ' caccval: ' + str(acc_val.cpu().numpy())
+
+            strtoprint += ' zlen: ' + str(vlen(z_model).cpu().numpy())
+            strtoprint += ' zloss: ' + str(loss_z.cpu().numpy())
+
+            strtoprint += ' xlen: ' + str(vlen(x_model).cpu().numpy())
+            strtoprint += ' xloss: ' + str(loss_x.cpu().numpy())
+
+            inc = inc * afactor1 + inconsistency(c_model, z_model, x_model, 1024) * afactor
+
+            strtoprint += ' inc: ' + str(inc.cpu().numpy())
+
+            print(strtoprint, file=open(logname, 'a'), flush=True)
+
+        # once awhile save the models, some statistics, paint an image ...
+        if count % save_period == 0:
+            print('# Saving models ...', file=open(logname, 'a'), flush=True)
+            save_model(c_model, './models/c_' + args.call_prefix + '.pt')
+            save_model(z_model, './models/z_' + args.call_prefix + '.pt')
+            save_model(x_model, './models/x_' + args.call_prefix + '.pt')
+
+            c_sta = torch.eye(nc, device=device)
+            z_sta = z_model.sample_random(10)
+            for _ in range(100):
+                x_sta = x_model.sample(c_sta, z_sta)
+                z_sta = z_model.sample(c_sta, x_sta)
+
+            with torch.no_grad():
+                im1 = x[0:10]
+                im2 = x_model.get_probs(c[0:10], z[0:10])
+                z_tmp = z_model.sample_random(10)
+                im3 = x_model.get_probs(c_sta, z_tmp)
+                im4 = x_model.get_probs(c_sta, z_sta)
+                imtoviz = torch.cat((im1, im2, im3, im4), dim=0)
+                vutils.save_image(imtoviz, './images/img_' + args.call_prefix + '.png', nrow=10)
+
+            print('# ... done.', file=open(logname, 'a'), flush=True)
+
+        count += 1
+        if count == args.niterations:
+            break
+
+    print('# Finished at ' + time.strftime('%c') + ', %g seconds elapsed' %
+          (time.time()-time0), file=open(logname, 'a'), flush=True)
