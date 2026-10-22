@@ -6,13 +6,19 @@ from x_model import XModel
 
 from my_mnist import MY_MNIST
 
+# Implements "blending" learning as described in the paper
+# at the end of section 4.
+# There is a batch containing samples which are distributed along the generating chain.
+# At each iteration (see get_batch() below), the batch is updated.
+# The learning procedure (in the main.py) optimizes all conditionals on the whole batch.
+
 class Target():
     def __init__(self,
-                 c_model : CModel,
-                 z_model : ZModel,
-                 x_model : XModel,
-                 bs_a: int, # all
-                 bs_n: int, # new
+                 c_model : CModel, # p(c|z,x)
+                 z_model : ZModel, # p(z|c,x)
+                 x_model : XModel, # p(x|c,z)
+                 bs_a: int, # the number of samples in the batch
+                 bs_n: int, # the number of the newly injected samples
                  device: int):
 
         self.c_model = c_model
@@ -23,8 +29,16 @@ class Target():
         self.bs_n = bs_n
         self.device = device
 
+        # the dataset
         self.my_mnist = MY_MNIST(bs_n)
 
+        # initialize the batch
+        # c -- classes
+        # z -- latent variables
+        # x -- images
+        # l -- for each sample the indicator (0/1/2), showing what component was sampled last
+
+        # first, get everything from the training data (completed)
         self.c, self.z, self.x, self.l = self.get_new_data()
         while True:
             c, z, x, l = self.get_new_data()
@@ -40,18 +54,27 @@ class Target():
         self.x = self.x[:self.bs_a]
         self.l = self.l[:self.bs_a]
 
+        # second, perform updates several times in order to have the samples
+        # properly distributed along the chain
         for _ in range(100):
             self.get_batch()
 
+    # newly injected data
     def get_new_data(self):
 
+        # get the new date from the dateset
         c, x = self.my_mnist.get_train(self.device)
-        # add noise to MNIST
+
+        # we add a very small portion of noise here (remember, MNIST is binarized)
+        # otherwise we have a couple of pixel positions, which are just always black,
+        # which leads to numerical instabilities
         mask = (torch.rand_like(x) < 0.01).float()
         x = x * (1 - mask) + (1 - x) * mask
 
+        # completion consists from just sampling once from p(z|c,x)
         z = self.z_model.sample(c, x)
 
+        # the last sampled is z, corresponds to "1"
         l = torch.ones([x.shape[0]], device=self.device).long()
 
         return c, z, x, l
@@ -60,14 +83,14 @@ class Target():
 
         n_to_keep = self.bs_a - self.bs_n
 
-        # permute, keep a part
+        # shuffle, keep a part
         perm = torch.randperm(self.bs_a)
         c_ch = torch.split(self.c[perm], [n_to_keep, self.bs_n])[0]
         z_ch = torch.split(self.z[perm], [n_to_keep, self.bs_n])[0]
         x_ch = torch.split(self.x[perm], [n_to_keep, self.bs_n])[0]
         l_ch = torch.split(self.l[perm], [n_to_keep, self.bs_n])[0]
 
-        # split
+        # split to 3 chunks for resampling c, z and x
         c_ch = list(torch.chunk(c_ch, 3))
         z_ch = list(torch.chunk(z_ch, 3))
         x_ch = list(torch.chunk(x_ch, 3))

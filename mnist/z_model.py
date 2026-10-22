@@ -1,5 +1,8 @@
-import torch
+# implements p(z|c,x)
+# the structure is very similar to others
+# see c_model.py for more detailed comments
 
+import torch
 from nets import EncoderS
 
 class ZNet(torch.nn.Module):

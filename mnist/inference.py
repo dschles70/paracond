@@ -9,6 +9,7 @@ from my_mnist import MY_MNIST
 
 from helpers import load_model
 
+# this function is imported from the "main.py" to watch the accuracies "on the fly"
 def inference(x : torch.Tensor,
               c_model : CModel,
               z_model : ZModel):
@@ -27,6 +28,7 @@ def inference(x : torch.Tensor,
     cdec = torch.argmax(cmarg, dim=1)
     return torch.nn.functional.one_hot(cdec, num_classes=c.shape[1]).float()
 
+# perform inference for the whole dataset
 if __name__ == '__main__':
     print(os.uname(), flush=True)
     time0 = time.time()

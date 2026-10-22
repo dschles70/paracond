@@ -1,5 +1,6 @@
 import torch
 
+# the total mean squared length of the learnable parameters 
 def vlen(layer : torch.nn.Module):
     vsum = 0.
     vnn = 0

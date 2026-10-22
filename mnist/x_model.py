@@ -1,3 +1,7 @@
+# implements p(x|c,z)
+# the structure is very similar to others
+# see c_model.py for more detailed comments
+
 import torch
 from nets import Decoder
 
@@ -60,6 +64,7 @@ class XModel(torch.nn.Module):
             scores = self.net(c, z)
             return torch.sigmoid(scores).bernoulli().detach()
 
+    # used for visualization only
     def get_probs(self,
                   c : torch.Tensor,
                   z : torch.Tensor) -> torch.Tensor:

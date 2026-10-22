@@ -42,10 +42,12 @@ if __name__ == '__main__':
     nz = args.nz
     nc = 10
 
+    # create models
     c_model = CModel(nc, nz, args.stepsize).to(device)
     z_model = ZModel(nc, nz, args.stepsize).to(device)
     x_model = XModel(nc, nz, args.stepsize).to(device)
 
+    # load models if necessary
     if args.load_id != '':
         strict_c = True
         strict_z = True
@@ -80,12 +82,17 @@ if __name__ == '__main__':
         afactor = (1/(count + 1)) if count < 1000 else 0.001
         afactor1 = 1 - afactor
 
+        # implements "blending" learning
+        # the "target" class prepares the batch, in which the samples are distributed
+        # along the chain
         c, z, x, l = target.get_batch()
+
+        # all conditionals are learned on the while batch
         loss_c = loss_c*afactor1 + c_model.optimize(c, z, x, l)*afactor
         loss_z = loss_z*afactor1 + z_model.optimize(c, z, x, l)*afactor
         loss_x = loss_x*afactor1 + x_model.optimize(c, z, x, l)*afactor
 
-        # once awhile print out
+        # once awhile print out (in the log-file)
         if count % log_period == 0:
 
             count1 = count // log_period
@@ -97,6 +104,7 @@ if __name__ == '__main__':
             strtoprint += ' clen: ' + str(vlen(c_model).cpu().numpy())
             strtoprint += ' closs: ' + str(loss_c.cpu().numpy())
 
+            # inference (train)
             ci, xi = target.my_mnist.get_train(device)
             dec = inference(xi, c_model, z_model)
             ci = torch.argmax(ci, dim=1)
@@ -104,6 +112,7 @@ if __name__ == '__main__':
             acc = (ci == dec).float().mean()
             acc_train = acc_train * afactor1 + acc * afactor
 
+            # inference (val)
             ci, xi = target.my_mnist.get_val(device)
             dec = inference(xi, c_model, z_model)
             ci = torch.argmax(ci, dim=1)
@@ -122,13 +131,14 @@ if __name__ == '__main__':
 
             print(strtoprint, file=open(logname, 'a'), flush=True)
 
-        # once awhile save the models, some statistics, paint an image ...
+        # once awhile save the models, paint an image
         if count % save_period == 0:
             print('# Saving models ...', file=open(logname, 'a'), flush=True)
             save_model(c_model, './models/c_' + args.id + '.pt')
             save_model(z_model, './models/z_' + args.id + '.pt')
             save_model(x_model, './models/x_' + args.id + '.pt')
 
+            # sample from the limiting distribution p(z,x|c), i.e. conditioned on c
             c_sta = torch.eye(nc, device=device)
             z_sta = z_model.sample_random(10)
             for _ in range(100):
@@ -136,11 +146,14 @@ if __name__ == '__main__':
                 z_sta = z_model.sample(c_sta, x_sta)
 
             with torch.no_grad():
-                im1 = x[0:10]
-                im2 = x_model.get_probs(c[0:10], z[0:10])
+                im1 = x[0:10] # original images
+                im2 = x_model.get_probs(c[0:10], z[0:10]) # "reconstructed" images
+
+                # images sampled from random codes (conditioned on the given classes)
                 z_tmp = z_model.sample_random(10)
                 im3 = x_model.get_probs(c_sta, z_tmp)
-                im4 = x_model.get_probs(c_sta, z_sta)
+
+                im4 = x_model.get_probs(c_sta, z_sta) # sampled from limiting distribution
                 imtoviz = torch.cat((im1, im2, im3, im4), dim=0)
                 vutils.save_image(imtoviz, './images/img_' + args.id + '.png', nrow=10)
 

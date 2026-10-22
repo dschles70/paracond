@@ -1,6 +1,7 @@
 import torch
 from nets import Encoder
 
+# a wrapper for the network implementing p(c|z,x)
 class CNet(torch.nn.Module):
 
     def __init__(self,
@@ -21,8 +22,8 @@ class CNet(torch.nn.Module):
 class CModel(torch.nn.Module):
 
     def __init__(self,
-                 nc : int,
-                 nz : int,
+                 nc : int, # the number of classes (10 for MNIST)
+                 nz : int, # the number of the latent dimensions
                  step : float):
 
         super(CModel, self).__init__()
@@ -31,17 +32,23 @@ class CModel(torch.nn.Module):
         self.net = CNet(nc, nz)
 
         self.optimizer = torch.optim.Adam(self.parameters(), lr=step)
+        # we use harmonic scheduler (just for the stability), 
+        # the decay of which is chosen so that after 1M iterations
+        # the gradient step size is decreased by 10
         self.sheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lambda it: 100000 / (100000 + it))
         self.criterion = torch.nn.CrossEntropyLoss(reduction='none')
 
+        # necessary only to store "device"
         self.dummy_param = torch.nn.Parameter(torch.zeros([]), requires_grad=False)
 
+    # gradient update
     def optimize(self,
-                 c : torch.Tensor,
-                 z : torch.Tensor,
-                 x : torch.Tensor,
-                 l : torch.Tensor) -> tuple:
-        
+                 c : torch.Tensor, # classes (target)
+                 z : torch.Tensor, # latents
+                 x : torch.Tensor, # image
+                 l : torch.Tensor):
+
+        # filter out samples, where c was just sampled (see "target.py" for details)
         c = c[l!=0]
         z = z[l!=0]
         x = x[l!=0]
@@ -55,6 +62,7 @@ class CModel(torch.nn.Module):
         
         return loss.detach()
 
+    # sampling from p(c|z,x)
     def sample(self,
                z : torch.Tensor,
                x : torch.Tensor) -> torch.Tensor:
@@ -64,6 +72,7 @@ class CModel(torch.nn.Module):
             distr = torch.distributions.one_hot_categorical.OneHotCategorical(logits=scores)
             return distr.sample().detach()
 
+    # sample uniformly (can be used e.g. for initialization, i.e. starting MCMC)
     def sample_random(self,
                       bs : int) -> torch.Tensor:
         
