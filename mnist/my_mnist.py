@@ -3,14 +3,14 @@ import numpy as np
 import torchvision
 import torchvision.transforms as transforms
 
-class MNIST():
+class MY_MNIST():
     def __init__(self,
                  bs : int):
 
         self.bs = bs
 
         # load data (training set)
-        train_set = torchvision.datasets.MNIST("../data", download=True, train=True, transform=transforms.ToTensor())
+        train_set = torchvision.datasets.MNIST("./data", download=True, train=True, transform=transforms.ToTensor())
         train_loader = torch.utils.data.DataLoader(train_set, batch_size=100)
 
         x = []
@@ -28,7 +28,7 @@ class MNIST():
         self.count_train = 0
 
         # load data (validation set)
-        val_set = torchvision.datasets.MNIST("../data", download=True, train=False, transform=transforms.ToTensor()) 
+        val_set = torchvision.datasets.MNIST("./data", download=True, train=False, transform=transforms.ToTensor()) 
         val_loader = torch.utils.data.DataLoader(val_set, batch_size=100)
 
         x = []
@@ -76,15 +76,5 @@ class MNIST():
         c = self.c_val[pos:pos+self.bs].to(device)
         
         self.count_val += 1
-
-        return c, x
-
-    def get_large_batch(self,
-                        bs : int,
-                        device : int):
-
-        pos = np.random.randint(self.n_train-bs)
-        x = self.x_train[pos:pos+bs].to(device)
-        c = self.c_train[pos:pos+bs].to(device)
 
         return c, x

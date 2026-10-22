@@ -38,6 +38,7 @@ class Encoder(torch.nn.Module):
         hh = self.actf(self.conv5(hh))
         return self.conv6(hh).squeeze(-1).squeeze(-1)
 
+# 2d + 1d -> 1d
 class EncoderS(torch.nn.Module):
     """ Some class description. """
 
@@ -82,7 +83,7 @@ class EncoderS(torch.nn.Module):
         hh = self.actf(self.conv5(hh) + self.lin5(s).unsqueeze(-1).unsqueeze(-1))
         return self.conv6(hh).squeeze(-1).squeeze(-1)
 
-# 2d -> 1d
+# 1d -> 2d
 class Decoder(torch.nn.Module):
     """ Some class description. """
 

@@ -69,13 +69,3 @@ class ZModel(torch.nn.Module):
         
         with torch.no_grad():
             return (torch.rand([bs, self.nz], device=self.dummy.device)<0.5).float().detach()
-
-    def inconsistency(self,
-                      c : torch.Tensor,
-                      z : torch.Tensor,
-                      x : torch.Tensor):
-
-        with torch.no_grad():
-            scores = self.net(c, x)
-            sampled = torch.sigmoid(scores).bernoulli()
-            return ((sampled - z) * scores).sum(1).mean().detach(), sampled.detach()

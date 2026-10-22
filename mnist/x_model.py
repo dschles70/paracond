@@ -67,26 +67,3 @@ class XModel(torch.nn.Module):
         with torch.no_grad():
             scores = self.net(c, z)
             return torch.sigmoid(scores).detach()
-
-    def inconsistency(self,
-                      c : torch.Tensor,
-                      z : torch.Tensor,
-                      x : torch.Tensor):
-
-        with torch.no_grad():
-            mu, lsigma = self.net(c, z)
-            sigma = torch.exp(lsigma)
-            sampled = torch.randn_like(mu) * sigma + mu
-            l = (x - mu) ** 2
-            l_s = (sampled - mu) ** 2
-            return ((l - l_s) / (2*(sigma**2))).sum([1,2,3]).mean().detach(), sampled.detach()
-
-    def inconsistency(self,
-                      c : torch.Tensor,
-                      z : torch.Tensor,
-                      x : torch.Tensor):
-
-        with torch.no_grad():
-            scores = self.net(c, z)
-            sampled = torch.sigmoid(scores).bernoulli()
-            return ((sampled - x) * scores).sum([1,2,3]).mean().detach(), sampled.detach()

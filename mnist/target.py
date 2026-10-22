@@ -4,7 +4,7 @@ from c_model import CModel
 from z_model import ZModel
 from x_model import XModel
 
-from mnist import MNIST
+from my_mnist import MY_MNIST
 
 class Target():
     def __init__(self,
@@ -23,7 +23,7 @@ class Target():
         self.bs_n = bs_n
         self.device = device
 
-        self.mnist = MNIST(bs_n)
+        self.my_mnist = MY_MNIST(bs_n)
 
         self.c, self.z, self.x, self.l = self.get_new_data()
         while True:
@@ -45,7 +45,7 @@ class Target():
 
     def get_new_data(self):
 
-        c, x = self.mnist.get_train(self.device)
+        c, x = self.my_mnist.get_train(self.device)
         # add noise to MNIST
         mask = (torch.rand_like(x) < 0.01).float()
         x = x * (1 - mask) + (1 - x) * mask

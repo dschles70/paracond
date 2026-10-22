@@ -1,23 +1,4 @@
 import torch
-
-# from nets import EncoderS
-
-# class CNet(torch.nn.Module):
-
-#     def __init__(self,
-#                  nc : int,
-#                  nz : int):
-
-#         super(CNet, self).__init__()
-
-#         self.net = EncoderS(1, nz, nc)
-
-#     def forward(self,
-#                 z : torch.Tensor,
-#                 x : torch.Tensor) -> torch.Tensor:
-
-#          return self.net(x, z)
-
 from nets import Encoder
 
 class CNet(torch.nn.Module):
@@ -88,13 +69,3 @@ class CModel(torch.nn.Module):
         
         ind = torch.randint(self.nc, [bs], device=self.dummy_param.device)
         return torch.nn.functional.one_hot(ind, num_classes=self.nc).float().detach()
-    
-    def inconsistency(self,
-                      c : torch.Tensor,
-                      z : torch.Tensor,
-                      x : torch.Tensor):
-
-        with torch.no_grad():
-            scores = self.net(z, x)
-            sampled = torch.distributions.one_hot_categorical.OneHotCategorical(logits=scores).sample()
-            return (scores * (sampled - c)).sum(1).mean().detach(), sampled.detach()

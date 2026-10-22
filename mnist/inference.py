@@ -5,7 +5,7 @@ import argparse
 import torch
 from c_model import CModel
 from z_model import ZModel
-from mnist import MNIST
+from my_mnist import MY_MNIST
 
 from helpers import load_model
 
@@ -57,10 +57,10 @@ if __name__ == '__main__':
     loadprot = load_model(z_model, './models/z_' + args.model_prefix + '.pt', strict=True, load_optimizer=False)
     print('z: ', loadprot, flush=True)
 
-    mnist = MNIST(bs)
+    my_mnist = MY_MNIST(bs)
 
-    x_all = torch.split(mnist.x_train.to(device), bs)
-    c_all = torch.split(mnist.c_train.to(device), bs)
+    x_all = torch.split(my_mnist.x_train.to(device), bs)
+    c_all = torch.split(my_mnist.c_train.to(device), bs)
     n_batches = len(x_all)
 
     total_acc = 0
@@ -77,10 +77,10 @@ if __name__ == '__main__':
         print('.', end='', flush=True)
 
     print()
-    print('Training accuracy: ', (total_acc/mnist.x_train.shape[0]).cpu().numpy(), flush=True)
+    print('Training accuracy: ', (total_acc/my_mnist.x_train.shape[0]).cpu().numpy(), flush=True)
 
-    x_all = torch.split(mnist.x_val.to(device), bs)
-    c_all = torch.split(mnist.c_val.to(device), bs)
+    x_all = torch.split(my_mnist.x_val.to(device), bs)
+    c_all = torch.split(my_mnist.c_val.to(device), bs)
     n_batches = len(x_all)
 
     total_acc = 0
@@ -97,4 +97,4 @@ if __name__ == '__main__':
         print('.', end='', flush=True)
 
     print()
-    print('Validation accuracy: ', (total_acc/mnist.x_val.shape[0]).cpu().numpy(), flush=True)
+    print('Validation accuracy: ', (total_acc/my_mnist.x_val.shape[0]).cpu().numpy(), flush=True)

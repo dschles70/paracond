@@ -4,13 +4,12 @@ import time
 import torch
 import torchvision.utils as vutils
 
-from helpers import ensure_dir, vlen, load_model, save_model
+from helpers import vlen, load_model, save_model
 
 from c_model import CModel
 from z_model import ZModel
 from x_model import XModel
 from target import Target
-from inconsistency import inconsistency
 from inference import inference
 
 if __name__ == '__main__':
@@ -18,22 +17,22 @@ if __name__ == '__main__':
     time0 = time.time()
 
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--call_prefix', required=True, help='Call prefix.')
-    parser.add_argument('--load_prefix', default='', help='Load prefix.')
-    parser.add_argument('--stepsize', type=float, required=True, help='')
-    parser.add_argument('--nz', type=int, required=True, help='')
-    parser.add_argument('--bs_a', type=int, default=1024, help='Batch size')
-    parser.add_argument('--bs_n', type=int, default=256, help='Batch size')
-    parser.add_argument('--niterations', type=int, default=-1, help='')
+    parser.add_argument('--id',          type=str,   required=True,   help='Identifier')
+    parser.add_argument('--load_id',     type=str,   default='',      help='Identifier to load')
+    parser.add_argument('--stepsize',    type=float, default=1e-4,    help='Gradient stepsize')
+    parser.add_argument('--nz',          type=int,   default=64,      help='The number of latent dimensions')
+    parser.add_argument('--bs_a',        type=int,   default=1024,    help='Batch size')
+    parser.add_argument('--bs_n',        type=int,   default=256,     help='The number of newly inserted samples')
+    parser.add_argument('--niterations', type=int,   default=1000000, help='The number of gradient update iterations')
 
     args = parser.parse_args()
 
-    ensure_dir('./logs')
-    ensure_dir('./models')
-    ensure_dir('./images')
+    os.makedirs('./logs', exist_ok=True)
+    os.makedirs('./models', exist_ok=True)
+    os.makedirs('./images', exist_ok=True)
 
     # printout
-    logname = './logs/log-' + args.call_prefix + '.txt'
+    logname = './logs/log-' + args.id + '.txt'
     print('# Starting at ' + time.strftime('%c'), file=open(logname, 'w'), flush=True)
 
     device = torch.cuda.current_device()
@@ -47,17 +46,17 @@ if __name__ == '__main__':
     z_model = ZModel(nc, nz, args.stepsize).to(device)
     x_model = XModel(nc, nz, args.stepsize).to(device)
 
-    if args.load_prefix != '':
+    if args.load_id != '':
         strict_c = True
         strict_z = True
         strict_x = True
         load_optimizer = False
 
-        loadprot = load_model(c_model, './models/c_' + args.load_prefix + '.pt', strict=strict_c, load_optimizer=load_optimizer)
+        loadprot = load_model(c_model, './models/c_' + args.load_id + '.pt', strict=strict_c, load_optimizer=load_optimizer)
         print('c: ', loadprot, flush=True)
-        loadprot = load_model(z_model, './models/z_' + args.load_prefix + '.pt', strict=strict_z, load_optimizer=load_optimizer)
+        loadprot = load_model(z_model, './models/z_' + args.load_id + '.pt', strict=strict_z, load_optimizer=load_optimizer)
         print('z: ', loadprot, flush=True)
-        loadprot = load_model(x_model, './models/x_' + args.load_prefix + '.pt', strict=strict_x, load_optimizer=load_optimizer)
+        loadprot = load_model(x_model, './models/x_' + args.load_id + '.pt', strict=strict_x, load_optimizer=load_optimizer)
         print('x: ', loadprot, flush=True)
 
         print('# Models loaded', file=open(logname, 'a'), flush=True)
@@ -73,7 +72,6 @@ if __name__ == '__main__':
     loss_c = 2.3 * torch.ones([], device=device)
     loss_z = 0.69 * torch.ones([], device=device)
     loss_x = 0.69 * torch.ones([], device=device)
-    inc = torch.zeros([], device=device)
     acc_train = 0.1 * torch.ones([], device=device)
     acc_val = 0.1 * torch.ones([], device=device)
 
@@ -99,14 +97,14 @@ if __name__ == '__main__':
             strtoprint += ' clen: ' + str(vlen(c_model).cpu().numpy())
             strtoprint += ' closs: ' + str(loss_c.cpu().numpy())
 
-            ci, xi = target.mnist.get_train(device)
+            ci, xi = target.my_mnist.get_train(device)
             dec = inference(xi, c_model, z_model)
             ci = torch.argmax(ci, dim=1)
             dec = torch.argmax(dec, dim=1)
             acc = (ci == dec).float().mean()
             acc_train = acc_train * afactor1 + acc * afactor
 
-            ci, xi = target.mnist.get_val(device)
+            ci, xi = target.my_mnist.get_val(device)
             dec = inference(xi, c_model, z_model)
             ci = torch.argmax(ci, dim=1)
             dec = torch.argmax(dec, dim=1)
@@ -122,18 +120,14 @@ if __name__ == '__main__':
             strtoprint += ' xlen: ' + str(vlen(x_model).cpu().numpy())
             strtoprint += ' xloss: ' + str(loss_x.cpu().numpy())
 
-            inc = inc * afactor1 + inconsistency(c_model, z_model, x_model, 1024) * afactor
-
-            strtoprint += ' inc: ' + str(inc.cpu().numpy())
-
             print(strtoprint, file=open(logname, 'a'), flush=True)
 
         # once awhile save the models, some statistics, paint an image ...
         if count % save_period == 0:
             print('# Saving models ...', file=open(logname, 'a'), flush=True)
-            save_model(c_model, './models/c_' + args.call_prefix + '.pt')
-            save_model(z_model, './models/z_' + args.call_prefix + '.pt')
-            save_model(x_model, './models/x_' + args.call_prefix + '.pt')
+            save_model(c_model, './models/c_' + args.id + '.pt')
+            save_model(z_model, './models/z_' + args.id + '.pt')
+            save_model(x_model, './models/x_' + args.id + '.pt')
 
             c_sta = torch.eye(nc, device=device)
             z_sta = z_model.sample_random(10)
@@ -148,7 +142,7 @@ if __name__ == '__main__':
                 im3 = x_model.get_probs(c_sta, z_tmp)
                 im4 = x_model.get_probs(c_sta, z_sta)
                 imtoviz = torch.cat((im1, im2, im3, im4), dim=0)
-                vutils.save_image(imtoviz, './images/img_' + args.call_prefix + '.png', nrow=10)
+                vutils.save_image(imtoviz, './images/img_' + args.id + '.png', nrow=10)
 
             print('# ... done.', file=open(logname, 'a'), flush=True)
 
