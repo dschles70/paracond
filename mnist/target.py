@@ -18,7 +18,8 @@ class Target():
                  x_model : XModel, # p(x|c,z)
                  bs_a: int, # the total number of samples in the batch
                  bs_n: int, # the number of the newly injected samples
-                 device: int):
+                 device: int # the device
+                 ):
 
         self.c_model = c_model
         self.z_model = z_model

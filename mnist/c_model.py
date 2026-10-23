@@ -23,9 +23,10 @@ class CNet(torch.nn.Module):
 class CModel(torch.nn.Module):
 
     def __init__(self,
-                 nc : int, # the number of classes (10 for MNIST)
-                 nz : int, # the number of the latent dimensions
-                 step : float):
+                 nc : int,    # the number of classes (10 for MNIST)
+                 nz : int,    # the number of the latent dimensions
+                 step : float # gradient stepsize
+                 ):
 
         super(CModel, self).__init__()
 
@@ -46,8 +47,9 @@ class CModel(torch.nn.Module):
     def optimize(self,
                  c : torch.Tensor, # classes (target)
                  z : torch.Tensor, # latents
-                 x : torch.Tensor, # image
-                 l : torch.Tensor):
+                 x : torch.Tensor, # images
+                 l : torch.Tensor  # the last sampled component
+                 ):
 
         # filter out samples, where c was just sampled (see "target.py" for details)
         c = c[l!=0]

@@ -6,7 +6,8 @@ import torchvision.transforms as transforms
 # just a wrapper for the MNIST dataset
 class MY_MNIST():
     def __init__(self,
-                 bs : int):
+                 bs : int # batch size
+                 ):
 
         self.bs = bs
 
