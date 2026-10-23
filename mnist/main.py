@@ -17,16 +17,19 @@ if __name__ == '__main__':
     time0 = time.time()
 
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--id',          type=str,   required=True,   help='Identifier')
-    parser.add_argument('--load_id',     type=str,   default='',      help='Identifier to load')
-    parser.add_argument('--stepsize',    type=float, default=1e-4,    help='Gradient stepsize')
-    parser.add_argument('--nz',          type=int,   default=64,      help='The number of latent dimensions')
-    parser.add_argument('--bs_a',        type=int,   default=1024,    help='Batch size')
-    parser.add_argument('--bs_n',        type=int,   default=256,     help='The number of newly inserted samples')
-    parser.add_argument('--niterations', type=int,   default=1000000, help='The number of gradient update iterations')
+    parser.add_argument('--id',          type=str,   required=True, help='Identifier')
+    parser.add_argument('--nz',          type=int,   required=True, help='The number of latent dimensions')
+    parser.add_argument('--load_id',     type=str,   default='',    help='Identifier to load, empty means "nothing to load"')
+    parser.add_argument('--stepsize',    type=float, default=1e-4,  help='Gradient stepsize')
+    parser.add_argument('--bs_a',        type=int,   default=1024,  help='Batch size')
+    parser.add_argument('--bs_n',        type=int,   default=256,   help='The number of newly inserted samples')
+    parser.add_argument('--niterations', type=int,   default=-1,    help='The number of gradient update iterations (-1 for infinity)')
+
+    # note that the defaults values of bs_a and bs_n correspond to the average chain length equal 4
 
     args = parser.parse_args()
 
+    # create if necessary the folders containing the learning results -- logs, model checkpoints, images
     os.makedirs('./logs', exist_ok=True)
     os.makedirs('./models', exist_ok=True)
     os.makedirs('./images', exist_ok=True)
@@ -40,6 +43,8 @@ if __name__ == '__main__':
 
     # numbers of hidden variables
     nz = args.nz
+
+    # 10 classes in MNIST
     nc = 10
 
     # create models
@@ -63,19 +68,24 @@ if __name__ == '__main__':
 
         print('# Models loaded', file=open(logname, 'a'), flush=True)
 
+    # create "target" providing re-sampling functionality for "nlanding" learning
     target = Target(c_model, z_model, x_model, args.bs_a, args.bs_n, device)
 
+    # how often to printout, save the checkpoints
     log_period = 100
     save_period = 1000
     count = 0
 
     print('# Models prepared, go ...', file=open(logname, 'a'), flush=True)
 
-    loss_c = 2.3 * torch.ones([], device=device)
-    loss_z = 0.69 * torch.ones([], device=device)
-    loss_x = 0.69 * torch.ones([], device=device)
-    acc_train = 0.1 * torch.ones([], device=device)
-    acc_val = 0.1 * torch.ones([], device=device)
+    # losses to watch
+    loss_c = 2.3 * torch.ones([], device=device) # ~ln(10)
+    loss_z = 0.69 * torch.ones([], device=device) # ~ln(2)
+    loss_x = 0.69 * torch.ones([], device=device) # ~ln(2)
+
+    # accuracies to watch
+    acc_train = 0.1 * torch.ones([], device=device) # 1/10 (random decision)
+    acc_val = 0.1 * torch.ones([], device=device) # 1/10 (random decision)
 
     while True:
         # accumulation speed
@@ -83,7 +93,7 @@ if __name__ == '__main__':
         afactor1 = 1 - afactor
 
         # implements "blending" learning
-        # the "target" class prepares the batch, in which the samples are distributed
+        # the "target" module prepares the batch, in which the samples are distributed
         # along the chain
         c, z, x, l = target.get_batch()
 
@@ -153,7 +163,7 @@ if __name__ == '__main__':
                 z_tmp = z_model.sample_random(10)
                 im3 = x_model.get_probs(c_sta, z_tmp)
 
-                im4 = x_model.get_probs(c_sta, z_sta) # sampled from limiting distribution
+                im4 = x_model.get_probs(c_sta, z_sta) # sampled from the limiting distribution
                 imtoviz = torch.cat((im1, im2, im3, im4), dim=0)
                 vutils.save_image(imtoviz, './images/img_' + args.id + '.png', nrow=10)
 

@@ -13,6 +13,7 @@ class CNet(torch.nn.Module):
         self.net = Encoder(1, nc)
         self.lin = torch.nn.Linear(nz, nc, bias=False)
 
+    # returns logits (remember, c is a categorical variable)
     def forward(self,
                 z : torch.Tensor,
                 x : torch.Tensor) -> torch.Tensor:
@@ -34,7 +35,7 @@ class CModel(torch.nn.Module):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=step)
         # we use harmonic scheduler (just for the stability), 
         # the decay of which is chosen so that after 1M iterations
-        # the gradient step size is decreased by 10
+        # the gradient step size is decreased by the factor 11
         self.sheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lambda it: 100000 / (100000 + it))
         self.criterion = torch.nn.CrossEntropyLoss(reduction='none')
 
@@ -53,6 +54,7 @@ class CModel(torch.nn.Module):
         z = z[l!=0]
         x = x[l!=0]
 
+        # optimize (standard)
         self.optimizer.zero_grad()
         scores = self.net(z, x)
         loss = self.criterion(scores, c).mean()

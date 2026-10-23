@@ -6,8 +6,7 @@ from x_model import XModel
 
 from my_mnist import MY_MNIST
 
-# Implements "blending" learning as described in the paper
-# at the end of section 4.
+# Implements "blending" learning as described in the paper at the end of section 4.
 # There is a batch containing samples which are distributed along the generating chain.
 # At each iteration (see get_batch() below), the batch is updated.
 # The learning procedure (in the main.py) optimizes all conditionals on the whole batch.
@@ -17,7 +16,7 @@ class Target():
                  c_model : CModel, # p(c|z,x)
                  z_model : ZModel, # p(z|c,x)
                  x_model : XModel, # p(x|c,z)
-                 bs_a: int, # the number of samples in the batch
+                 bs_a: int, # the total number of samples in the batch
                  bs_n: int, # the number of the newly injected samples
                  device: int):
 
@@ -66,12 +65,12 @@ class Target():
         c, x = self.my_mnist.get_train(self.device)
 
         # we add a very small portion of noise here (remember, MNIST is binarized)
-        # otherwise we have a couple of pixel positions, which are just always black,
+        # otherwise we have a couple of pixel positions, where the pixels are just always black,
         # which leads to numerical instabilities
         mask = (torch.rand_like(x) < 0.01).float()
         x = x * (1 - mask) + (1 - x) * mask
 
-        # completion consists from just sampling once from p(z|c,x)
+        # completion consists of just sampling once from p(z|c,x)
         z = self.z_model.sample(c, x)
 
         # the last sampled is z, corresponds to "1"
@@ -90,7 +89,12 @@ class Target():
         x_ch = torch.split(self.x[perm], [n_to_keep, self.bs_n])[0]
         l_ch = torch.split(self.l[perm], [n_to_keep, self.bs_n])[0]
 
-        # split to 3 chunks for resampling c, z and x
+        # hence, at each iteration, each example in the batch disappears with probability "bs_n / bs_a"
+        # consequently, the average chain length 
+        # (i.e. the average number of iteration a sample stays in the batch and is resampled)
+        # is "bs_a / bs_n"
+
+        # split to 3 chunks for resampling c, z or x
         c_ch = list(torch.chunk(c_ch, 3))
         z_ch = list(torch.chunk(z_ch, 3))
         x_ch = list(torch.chunk(x_ch, 3))
@@ -103,6 +107,8 @@ class Target():
         l_ch[1] = torch.ones([z_ch[1].shape[0]], device=self.device).long()
         x_ch[2] = self.x_model.sample(c_ch[2], z_ch[2])
         l_ch[2] = (torch.ones([x_ch[2].shape[0]], device=self.device) * 2).long()
+        # the indicators l show, which component was re-samples last
+        # 0 -- c, 1 -- z, and 2 -- x
 
         # get new data from the training set
         c, z, x, l = self.get_new_data()

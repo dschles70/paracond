@@ -50,11 +50,12 @@ class MY_MNIST():
                   device : int) -> torch.Tensor:
         
         if (self.count_train % self.period_train) == 0:
+            # once awhile shuffle the data
             permarray = torch.randperm(self.n_train)
             self.x_train = self.x_train[permarray]
             self.c_train = self.c_train[permarray]
 
-        # get portions of data
+        # get portions of data at a random position
         pos = np.random.randint(self.n_train-self.bs)
         x = self.x_train[pos:pos+self.bs].to(device)
         c = self.c_train[pos:pos+self.bs].to(device)
@@ -67,11 +68,12 @@ class MY_MNIST():
                 device : int) -> torch.Tensor:
         
         if (self.count_val % self.period_val) == 0:
+            # once awhile shuffle the data
             permarray = torch.randperm(self.n_val)
             self.x_val = self.x_val[permarray]
             self.c_val = self.c_val[permarray]
 
-        # get portions of data
+        # get portions of data at a random position
         pos = np.random.randint(self.n_val-self.bs)
         x = self.x_val[pos:pos+self.bs].to(device)
         c = self.c_val[pos:pos+self.bs].to(device)
