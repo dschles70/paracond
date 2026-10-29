@@ -4,7 +4,7 @@ import time
 import torch
 import torchvision.utils as vutils
 
-from helpers import ensure_dir, load_model
+from helpers import load_model
 
 from z_model import ZModel
 from x_model import XModel
