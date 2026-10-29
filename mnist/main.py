@@ -68,7 +68,7 @@ if __name__ == '__main__':
 
         print('# Models loaded', file=open(logname, 'a'), flush=True)
 
-    # create "target" providing re-sampling functionality for "nlanding" learning
+    # create "target" providing re-sampling functionality for "blending" learning
     target = Target(c_model, z_model, x_model, args.bs_a, args.bs_n, device)
 
     # how often to printout, save the checkpoints
@@ -97,22 +97,23 @@ if __name__ == '__main__':
         # along the chain
         c, z, x, l = target.get_batch()
 
-        # all conditionals are learned on the while batch
+        # all conditionals are learned on the whole batch
         loss_c = loss_c*afactor1 + c_model.optimize(c, z, x, l)*afactor
         loss_z = loss_z*afactor1 + z_model.optimize(c, z, x, l)*afactor
         loss_x = loss_x*afactor1 + x_model.optimize(c, z, x, l)*afactor
 
-        # once awhile print out (in the log-file)
+        # once in a while print out (in the log-file)
         if count % log_period == 0:
-
-            count1 = count // log_period
-            afactor = (1/(count1 + 1)) if count1 < 100 else 0.01
-            afactor1 = 1 - afactor
 
             strtoprint = 'time: ' + str(time.time()-time0) + ' count: ' + str(count)
 
             strtoprint += ' clen: ' + str(vlen(c_model).cpu().numpy())
             strtoprint += ' closs: ' + str(loss_c.cpu().numpy())
+
+            # accumulation speed for the accuracies
+            count1 = count // log_period
+            afactor = (1/(count1 + 1)) if count1 < 100 else 0.01
+            afactor1 = 1 - afactor
 
             # inference (train)
             ci, xi = target.my_mnist.get_train(device)
@@ -141,7 +142,7 @@ if __name__ == '__main__':
 
             print(strtoprint, file=open(logname, 'a'), flush=True)
 
-        # once awhile save the models, paint an image
+        # once in a while save the models, paint an image
         if count % save_period == 0:
             print('# Saving models ...', file=open(logname, 'a'), flush=True)
             save_model(c_model, './models/c_' + args.id + '.pt')
@@ -149,7 +150,7 @@ if __name__ == '__main__':
             save_model(x_model, './models/x_' + args.id + '.pt')
 
             # sample from the limiting distribution p(z,x|c), i.e. conditioned on c
-            c_sta = torch.eye(nc, device=device)
+            c_sta = torch.eye(nc, device=device) # classes 0...9 one-hot encoded
             z_sta = z_model.sample_random(10)
             for _ in range(100):
                 x_sta = x_model.sample(c_sta, z_sta)
@@ -159,7 +160,8 @@ if __name__ == '__main__':
                 im1 = x[0:10] # original images
                 im2 = x_model.get_probs(c[0:10], z[0:10]) # "reconstructed" images
 
-                # images sampled from random codes (conditioned on the given classes)
+                # images sampled from random codes (conditioned on the given classes) just to watch. 
+                # Actually these images are not relevant since in paracond we do not assume a uniform prior.
                 z_tmp = z_model.sample_random(10)
                 im3 = x_model.get_probs(c_sta, z_tmp)
 

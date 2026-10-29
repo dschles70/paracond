@@ -21,7 +21,7 @@ class MY_MNIST():
             x += [images]
             c += [classes]
         x = torch.cat(x)
-        self.x_train = (x>0.4375).float()
+        self.x_train = (x>0.4375).float() # binarized MNIST
         c = torch.cat(c)
         self.c_train = torch.nn.functional.one_hot(c, num_classes=10).float()
 
@@ -39,7 +39,7 @@ class MY_MNIST():
             x += [images]
             c += [classes]
         x = torch.cat(x)
-        self.x_val = (x>0.4375).float()
+        self.x_val = (x>0.4375).float() # binarized MNIST
         c = torch.cat(c)
         self.c_val = torch.nn.functional.one_hot(c, num_classes=10).float()
 
@@ -51,7 +51,7 @@ class MY_MNIST():
                   device : int) -> torch.Tensor:
         
         if (self.count_train % self.period_train) == 0:
-            # once awhile shuffle the data
+            # once in a while shuffle the data
             permarray = torch.randperm(self.n_train)
             self.x_train = self.x_train[permarray]
             self.c_train = self.c_train[permarray]
@@ -69,7 +69,7 @@ class MY_MNIST():
                 device : int) -> torch.Tensor:
         
         if (self.count_val % self.period_val) == 0:
-            # once awhile shuffle the data
+            # once in a while shuffle the data
             permarray = torch.randperm(self.n_val)
             self.x_val = self.x_val[permarray]
             self.c_val = self.c_val[permarray]

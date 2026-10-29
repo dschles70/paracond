@@ -25,14 +25,14 @@ Note:
 * The default `niterations = -1` means that the learning never stops, i.e. should be cancelled manually from outside.
 * The learning takes quite a time, so be patient. In our hardware (single GPU NVIDIA H100), 1M update iterations take about 6 hours. More or less useful results are, however, obtained much faster (after about 200k iterations).
 
-The progress of the learning can be watched using the notebook `plot.ipynb`. It just reads the logs and the images (which are updated once in a while during the learning) and visualizes the content.
+The progress of the learning can be watched using the notebook [plot.ipynb](./plot.ipynb). It just reads the logs and the images (which are updated once in a while during the learning) and visualizes the content.
 ___
 
 After the learning is done, the classification accuracies can be computed using
 ```python
 python inference.py --id 0 --nz 64
 ```
-It just goes through the dataset and computes training and validation accuracies. This implementation (with default parameters shown above, cancelled after about 740k iterations) achieves a training accuracy of `99.98`% and a validation accuracy of `99.13`%. 
+It just goes through the dataset and computes training and validation accuracies. This implementation (with default parameters given above, cancelled after about 740k iterations) achieves a training accuracy of `99.98`% and a validation accuracy of `99.13`%.
 
 ___
 

@@ -17,7 +17,7 @@ def inference(x : torch.Tensor, # images
 
     bs = x.shape[0]
 
-    # init z and its marginals
+    # init z and the marginals for classes
     z = z_model.sample_random(bs)
     cmarg = torch.zeros([bs, c_model.nc], device=x.device)
 

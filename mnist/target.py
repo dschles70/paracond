@@ -7,7 +7,7 @@ from x_model import XModel
 from my_mnist import MY_MNIST
 
 # Implements "blending" learning as described in the paper at the end of section 4.
-# There is a batch containing samples which are distributed along the generating chain.
+# There is a batch containing samples which are distributed along the generated chain.
 # At each iteration (see get_batch() below), the batch is updated.
 # The learning procedure (in the main.py) optimizes all conditionals on the whole batch.
 
@@ -62,7 +62,7 @@ class Target():
     # newly injected data
     def get_new_data(self):
 
-        # get the new date from the dateset
+        # get the new data from the dateset
         c, x = self.my_mnist.get_train(self.device)
 
         # we add a very small portion of noise here (remember, MNIST is binarized)
@@ -95,7 +95,7 @@ class Target():
         # (i.e. the average number of iteration a sample stays in the batch and is resampled)
         # is "bs_a / bs_n"
 
-        # split to 3 chunks for resampling c, z or x
+        # split into 3 chunks for resampling c, z or x
         c_ch = list(torch.chunk(c_ch, 3))
         z_ch = list(torch.chunk(z_ch, 3))
         x_ch = list(torch.chunk(x_ch, 3))
@@ -111,7 +111,7 @@ class Target():
         # the indicators l show, which component was re-samples last
         # 0 -- c, 1 -- z, and 2 -- x
 
-        # get new data from the training set
+        # get new data from the training set (completed)
         c, z, x, l = self.get_new_data()
 
         # put together
