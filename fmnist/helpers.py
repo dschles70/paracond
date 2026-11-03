@@ -28,3 +28,14 @@ def load_model(model : torch.nn.Module, filename : str, strict : bool = True, lo
             model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
         return loadprot_m
+
+def generate_seq(n : int, n_ops : int, last_op : int = -1):
+    seq = []
+    for _ in range(n):
+        ops = torch.randperm(n_ops)
+        while ops[0] == last_op:
+            ops = torch.randperm(n_ops)
+        last_op = ops[-1]
+        seq += ops.tolist()
+
+    return seq

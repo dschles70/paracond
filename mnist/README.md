@@ -35,6 +35,13 @@ python inference.py --id 0 --nz 64
 It just goes through the dataset and computes training and validation accuracies. This implementation (with default parameters given above, cancelled after about 740k iterations) achieves a training accuracy of `99.98`% and a validation accuracy of `99.13`%.
 
 ___
+The conditional generation is done by
+```python
+python generate.py --id 0 --nz 64
+```
+It produces an image stored in `./images/generated_<id>.png`, where columns correspond to classes.
+
+___
 
 The computation of the FID scores is a bit more complex. First, we generate image sets using
 
@@ -48,7 +55,7 @@ python -m pytorch_fid --device cuda:0 ./generated/origin/ ./generated/lim/
 This implementation achieves the FID score `3.37` for the training set and the validation FID score `4.56`.
 
 * During image generation, the data in `./generated` is not removed but just overwritten. Hence, remove the folder manually after the FID computation to avoid ambiguity.
-* The reference code in [pytorch-fid](https://github.com/mseitzer/pytorch-fid) seems to be incompatible with the current Python 4.14. We resolved it manually by (i) downloading the repository, (ii) correcting the code, and (iii) installing the package from sources.
+* The reference code in [pytorch-fid](https://github.com/mseitzer/pytorch-fid) seems to be incompatible with the current Python 3.14. We resolved it manually by (i) downloading the repository, (ii) correcting the code, and (iii) installing the package from sources.
 
 ___
 ### Code structure
