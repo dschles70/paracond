@@ -1,5 +1,7 @@
 import torch
 
+# "common_sigma" controls, whether the standard deviations 
+# should be equal (when True) or free (when False)
 class XNet(torch.nn.Module):
 
     def __init__(self,
@@ -68,6 +70,8 @@ class XModel(torch.nn.Module):
             sigma = torch.exp(lsigma)
             return mu.detach(), sigma.detach()
 
+    # provides "log p(x'|c) - log p(x|c)", where x' is sampled,
+    # used in the DBC-measure, see inconsistency.py for details
     def inconsistency(self,
                       c : torch.Tensor,
                       x : torch.Tensor):

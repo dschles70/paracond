@@ -1,5 +1,8 @@
 import torch
 
+# instead of a dataset, we have here the target GMM
+# this module constructs it and provides samples drawn from it
+
 class DataGenerator():
 
     def __init__(self,
@@ -7,11 +10,14 @@ class DataGenerator():
         
         self.nsamples = nsamples
 
+        # parameters of the ground truth GMMs
         self.w = torch.as_tensor([[0.8, 0.2]])
         self.mu = torch.as_tensor([[-0.5, 0.5]])
         self.sigma = torch.as_tensor([[0.5, 0.1]])
 
         # tabulate the probabilty density
+        # i.e. discretize making it a probability distribution
+        # used e.g. to calculate KL-divergences
         x = torch.linspace(-2, 2, 1000)
         p0 = torch.log(self.sigma[0,0]) + ((x - self.mu[0,0])**2) / (2*(self.sigma[0,0]**2))
         p0 = self.w[0,0] * torch.exp(-p0)
@@ -29,6 +35,9 @@ class DataGenerator():
 
         return torch.randn([self.nsamples,1]) * sigma + mu
 
+    # compute KL-divergence KL(p||q)
+    # both are given explicitly as arrays of probabilities
+    # should be of equal size, positive, sum to one.
     def kl(self,
            q : torch.Tensor):
 

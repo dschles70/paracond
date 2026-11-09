@@ -10,6 +10,7 @@ from x_model import XModel
 from inconsistency import inconsistency
 from target import Target
 
+# compute limiting p(c) by sampling
 def compute_prior(c_model : CModel,
                   x_model : XModel,
                   nsamples : int = 1000,
@@ -20,6 +21,7 @@ def compute_prior(c_model : CModel,
         c = c_model.sample(x)
     return c.mean()
     
+# compute limiting p(x) from p(c) and p(x|c)
 def probs(x_model : XModel,
           cprior: float):
 
@@ -33,6 +35,10 @@ def probs(x_model : XModel,
     p = (p0 + p1).flatten()
     return p / p.sum()
 
+# set the encoder weight to the true posterior
+# i.e. enforce the consistency
+# the weight is set, the bias is unchanged, i.e. learned
+# it works only with common_sigma > 0, otherwise it would fail
 def set_encoder(c_model : CModel,
                 x_model : XModel):
 
@@ -45,13 +51,13 @@ if __name__ == '__main__':
     time0 = time.time()
 
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--id',           type=str,   required=True,  help='Call prefix.')
-    parser.add_argument('--load_id',      type=str,   default='',     help='Load prefix.')
-    parser.add_argument('--stepsize',     type=float, default=1e-2,   help='')
+    parser.add_argument('--id',           type=str,   required=True,  help='Identifier.')
+    parser.add_argument('--load_id',      type=str,   default='',     help='Identifier to load, empty means "nothing to load".')
+    parser.add_argument('--stepsize',     type=float, default=1e-2,   help='Gradient stepsize')
     parser.add_argument('--bs_a',         type=int,   default=10000,  help='Batch size')
-    parser.add_argument('--bs_n',         type=int,   default=2500,   help='Batch size')
-    parser.add_argument('--common_sigma', type=int,   default=0,      help='')
-    parser.add_argument('--niterations',  type=int,   default=200000, help='')
+    parser.add_argument('--bs_n',         type=int,   default=2500,   help='The number of newly inserted samples')
+    parser.add_argument('--common_sigma', type=int,   default=0,      help='When > 0, enforce consistency')
+    parser.add_argument('--niterations',  type=int,   default=200000, help='The number of gradient update iterations')
 
     args = parser.parse_args()
 
@@ -97,10 +103,11 @@ if __name__ == '__main__':
         c, x, l = target.get_batch()
         loss_c = loss_c * afactor1 + c_model.optimize(c, x, l) * afactor
         loss_x = loss_x * afactor1 + x_model.optimize(c, x, l) * afactor
+        # set the encoder to be consistent if necessary
         if args.common_sigma > 0:
             set_encoder(c_model, x_model)
 
-        # once awhile print out
+        # once in a while print out
         if count % log_period == 0:
 
             strtoprint = 'time: ' + str(time.time()-time0) + ' count: ' + str(count)
@@ -121,7 +128,7 @@ if __name__ == '__main__':
 
             print(strtoprint, file=open(logname, 'a'), flush=True)
 
-        # once awhile save the models, some statistics, paint an image ...
+        # once in a while save the models
         if count % save_period == 0:
             print('# Saving models ...', file=open(logname, 'a'), flush=True)
             save_model(c_model, './models/c_' + args.id + '.pt')

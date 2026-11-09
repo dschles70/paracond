@@ -1,5 +1,9 @@
 import torch
 
+# the classes are called "c=0,1" as for other datasets.
+# not "k" as in the paper
+
+# this is the implementation for p(c|x)
 class CNet(torch.nn.Module):
 
     def __init__(self):
@@ -53,6 +57,8 @@ class CModel(torch.nn.Module):
 
             return (torch.rand([bs, 1]) < 0.5).float()
 
+    # provides "log p(c'|x) - log p(c|x)", where c' is sampled,
+    # used in the DBC-measure, see inconsistency.py for details
     def inconsistency(self,
                       c : torch.Tensor,
                       x : torch.Tensor):

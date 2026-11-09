@@ -8,4 +8,4 @@ The code here is partially somewhat "younger" than the one used in the paper. Af
 
 The subfolders contain implementations for different datasets/experiments. Thereby, [`mnist`](./mnist) contains a detailed description of how to use the code, and the sources are exhaustively commented. Others &ndash; i.e. [`fmnist`](./fmnist) and [`gmm`](./gmm) &ndash; have a very similar structure. They are documented rather sparsely where it is necessary.
 
-The sources for the _CelebA_ experiment are not published because of the following reasons: (i) the code is somewhat customized, (ii) it is anyway quite time-consuming (up to 4 GPU-days), and (iii) the dataset should be downloaded separately. However, the sources are available on request.
+The sources for the _CelebA_ experiments are not published yet because of some technical reasons. However, the sources are available on request.
